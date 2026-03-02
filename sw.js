@@ -1,5 +1,5 @@
 const CACHE = 'uglife-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+const ASSETS = ['/uglife-tracker/', '/uglife-tracker/index.html', '/uglife-tracker/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
