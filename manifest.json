@@ -2,7 +2,7 @@
   "name": "UG Life Tracker",
   "short_name": "UG Tracker",
   "description": "Track your undergraduate life week by week",
-  "start_url": "/",
+"start_url": "/uglife-tracker/",
   "display": "standalone",
   "background_color": "#0d0d0d",
   "theme_color": "#0d0d0d",
