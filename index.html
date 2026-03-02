@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="manifest" href="manifest.json"/>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>UG Life Tracker</title>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#0d0d0d"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="UG Tracker"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
   :root {
@@ -376,7 +381,7 @@
   }
   .quote cite { display: block; margin-top: 0.5rem; font-style: normal; font-size: 11px; }
 
-  /* SEMESTER OVERRIDE */
+  /* SEMESTER OVERRIDE - NEW DESIGN */
   .override-toggle {
     background: transparent;
     border: none;
@@ -389,26 +394,101 @@
     text-decoration: underline;
     text-transform: none;
     margin-bottom: 1rem;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
   }
   .override-toggle:hover { color: var(--text); background: transparent; opacity: 1; }
+  .override-toggle .chevron { transition: transform 0.2s; display: inline-block; }
+  .override-toggle.open .chevron { transform: rotate(180deg); }
 
   .override-panel {
     background: var(--surface2);
     border: 1px solid var(--border);
-    padding: 1.25rem;
+    padding: 0;
     margin-bottom: 1.5rem;
     display: none;
+    overflow: hidden;
   }
   .override-panel.open { display: block; }
-  .override-grid {
+
+  .override-panel-header {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: 140px 1fr 24px 1fr;
     gap: 0.75rem;
-    margin-bottom: 1rem;
+    align-items: center;
+    background: var(--surface);
   }
-  .override-grid label { color: var(--muted); font-size: 11px; display: block; margin-bottom: 3px; }
-  .override-grid input[type="date"] { width: 100%; }
+  .override-panel-header span {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .ph-arrow { text-align: center; }
+
+  .sem-rows { padding: 0.25rem 0; }
+
+  .sem-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 24px 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1.25rem;
+    border-bottom: 1px solid rgba(42,42,42,0.6);
+    transition: background 0.1s;
+  }
+  .sem-row:last-child { border-bottom: none; }
+  .sem-row:hover { background: rgba(255,255,255,0.015); }
+
+  .sem-row-name {
+    font-size: 11px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sem-badge {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sem-badge.academic { background: var(--accent); }
+  .sem-badge.holiday { background: var(--muted); }
+
+  .sem-row-arrow {
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .sem-date-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 0.38rem 0.5rem;
+    outline: none;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .sem-date-input:focus { border-color: var(--accent); }
+
+  .override-actions {
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 0.75rem;
+    background: var(--surface);
+  }
 
   @media(max-width: 600px) {
     .stats { grid-template-columns: repeat(2,1fr); }
@@ -443,12 +523,20 @@
   </div>
 
   <!-- OVERRIDE TOGGLE -->
-  <button class="override-toggle" onclick="toggleOverride()">⚙ Adjust individual semester dates</button>
+  <button class="override-toggle" id="overrideToggle" onclick="toggleOverride()">
+    ⚙ Adjust semester &amp; break dates <span class="chevron">▾</span>
+  </button>
   <div class="override-panel" id="overridePanel">
-    <div class="override-grid" id="overrideGrid"></div>
-    <div style="display:flex;gap:0.75rem;">
-      <button onclick="applyOverrides()">Save & rebuild</button>
-      <button class="ghost" onclick="clearOverrides()">Clear all overrides</button>
+    <div class="override-panel-header">
+      <span class="ph-name">Period</span>
+      <span>From</span>
+      <span class="ph-arrow">→</span>
+      <span>To</span>
+    </div>
+    <div class="sem-rows" id="overrideGrid"></div>
+    <div class="override-actions">
+      <button onclick="applyOverrides()">Save &amp; rebuild</button>
+      <button class="ghost" onclick="clearOverrides()">Clear all</button>
     </div>
   </div>
 
@@ -576,37 +664,45 @@ function parseDate(s) {
   return new Date(y, m-1, d);
 }
 
-function buildSemesters(startDate) {
-  // 4 years, 8 semesters (odd = ~18 weeks, even/holiday ~8 weeks break)
-  const semDefs = [
-    { name:'Semester 1', weeks:18 },
-    { name:'Winter Break', weeks:6, holiday:true },
-    { name:'Semester 2', weeks:18 },
-    { name:'Summer Break', weeks:8, holiday:true },
-    { name:'Semester 3', weeks:18 },
-    { name:'Winter Break', weeks:6, holiday:true },
-    { name:'Semester 4', weeks:18 },
-    { name:'Summer Break', weeks:8, holiday:true },
-    { name:'Semester 5', weeks:18 },
-    { name:'Winter Break', weeks:6, holiday:true },
-    { name:'Semester 6', weeks:18 },
-    { name:'Summer Break', weeks:8, holiday:true },
-    { name:'Semester 7', weeks:18 },
-    { name:'Winter Break', weeks:6, holiday:true },
-    { name:'Semester 8', weeks:18 },
-  ];
+const SEM_DEFS = [
+  { name:'Semester 1',   holiday:false, defaultWeeks:18 },
+  { name:'Winter Break', holiday:true,  defaultWeeks:6  },
+  { name:'Semester 2',   holiday:false, defaultWeeks:18 },
+  { name:'Summer Break', holiday:true,  defaultWeeks:8  },
+  { name:'Semester 3',   holiday:false, defaultWeeks:18 },
+  { name:'Winter Break', holiday:true,  defaultWeeks:6  },
+  { name:'Semester 4',   holiday:false, defaultWeeks:18 },
+  { name:'Summer Break', holiday:true,  defaultWeeks:8  },
+  { name:'Semester 5',   holiday:false, defaultWeeks:18 },
+  { name:'Winter Break', holiday:true,  defaultWeeks:6  },
+  { name:'Semester 6',   holiday:false, defaultWeeks:18 },
+  { name:'Summer Break', holiday:true,  defaultWeeks:8  },
+  { name:'Semester 7',   holiday:false, defaultWeeks:18 },
+  { name:'Winter Break', holiday:true,  defaultWeeks:6  },
+  { name:'Semester 8',   holiday:false, defaultWeeks:18 },
+];
 
+function buildSemesters(startDate) {
   let sems = [];
   let cur = new Date(startDate);
-  semDefs.forEach((def, i) => {
-    const overrideKey = `sem_${i}`;
-    const start = overrides[overrideKey] ? parseDate(overrides[overrideKey]) : new Date(cur);
+  SEM_DEFS.forEach((def, i) => {
+    const fromKey = `sem_${i}_from`;
+    const toKey   = `sem_${i}_to`;
+    const start = overrides[fromKey] ? parseDate(overrides[fromKey]) : new Date(cur);
+    const defaultEnd = addDays(start, def.defaultWeeks * 7);
+    const end   = overrides[toKey]   ? parseDate(overrides[toKey])   : defaultEnd;
+    // build weeks from start to end
     let w = [];
-    for (let j = 0; j < def.weeks; j++) {
-      w.push({ id: toISO(addDays(start, j * 7)), date: addDays(start, j * 7), holiday: !!def.holiday });
+    let d = new Date(start);
+    while (d < end) {
+      w.push({ id: toISO(d), date: new Date(d), holiday: def.holiday });
+      d = addDays(d, 7);
     }
-    sems.push({ name: def.name, holiday: !!def.holiday, weeks: w });
-    cur = addDays(start, def.weeks * 7);
+    if (w.length === 0) {
+      w.push({ id: toISO(start), date: new Date(start), holiday: def.holiday });
+    }
+    sems.push({ name: def.name, holiday: def.holiday, weeks: w });
+    cur = new Date(end);
   });
   return sems;
 }
@@ -614,23 +710,55 @@ function buildSemesters(startDate) {
 function buildOverrideGrid(sems) {
   const grid = document.getElementById('overrideGrid');
   grid.innerHTML = '';
-  sems.forEach((s, i) => {
-    const label = document.createElement('label');
-    label.textContent = s.name;
-    const input = document.createElement('input');
-    input.type = 'date';
-    input.dataset.idx = i;
-    input.value = overrides[`sem_${i}`] || '';
-    grid.appendChild(label);
-    grid.appendChild(input);
+  SEM_DEFS.forEach((def, i) => {
+    const fromKey = `sem_${i}_from`;
+    const toKey   = `sem_${i}_to`;
+    const sem = sems[i];
+
+    const row = document.createElement('div');
+    row.className = 'sem-row';
+
+    // Name
+    const nameEl = document.createElement('div');
+    nameEl.className = 'sem-row-name';
+    const badge = document.createElement('span');
+    badge.className = `sem-badge ${def.holiday ? 'holiday' : 'academic'}`;
+    nameEl.appendChild(badge);
+    nameEl.appendChild(document.createTextNode(def.name));
+    row.appendChild(nameEl);
+
+    // From input
+    const fromInput = document.createElement('input');
+    fromInput.type = 'date';
+    fromInput.className = 'sem-date-input';
+    fromInput.dataset.key = fromKey;
+    fromInput.value = overrides[fromKey] || (sem ? toISO(sem.weeks[0].date) : '');
+    fromInput.title = 'Start date';
+    row.appendChild(fromInput);
+
+    // Arrow
+    const arrow = document.createElement('div');
+    arrow.className = 'sem-row-arrow';
+    arrow.textContent = '→';
+    row.appendChild(arrow);
+
+    // To input
+    const toInput = document.createElement('input');
+    toInput.type = 'date';
+    toInput.className = 'sem-date-input';
+    toInput.dataset.key = toKey;
+    toInput.value = overrides[toKey] || (sem ? toISO(sem.weeks[sem.weeks.length-1].date) : '');
+    toInput.title = 'End date';
+    row.appendChild(toInput);
+
+    grid.appendChild(row);
   });
 }
 
 function applyOverrides() {
-  document.querySelectorAll('#overrideGrid input[type=date]').forEach(inp => {
-    const key = `sem_${inp.dataset.idx}`;
-    if (inp.value) overrides[key] = inp.value;
-    else delete overrides[key];
+  document.querySelectorAll('#overrideGrid .sem-date-input').forEach(inp => {
+    if (inp.value) overrides[inp.dataset.key] = inp.value;
+    else delete overrides[inp.dataset.key];
   });
   save();
   buildCalendar(true);
@@ -638,13 +766,15 @@ function applyOverrides() {
 
 function clearOverrides() {
   overrides = {};
-  document.querySelectorAll('#overrideGrid input[type=date]').forEach(i => i.value = '');
   save();
   buildCalendar(true);
 }
 
 function toggleOverride() {
-  document.getElementById('overridePanel').classList.toggle('open');
+  const panel = document.getElementById('overridePanel');
+  const btn = document.getElementById('overrideToggle');
+  panel.classList.toggle('open');
+  btn.classList.toggle('open');
 }
 
 function buildCalendar(silent) {
@@ -652,7 +782,7 @@ function buildCalendar(silent) {
   if (!sdVal) { alert('Please enter a start date.'); return; }
   const startDate = parseDate(sdVal);
   semesters = buildSemesters(startDate);
-  buildOverrideGrid(sems = semesters);
+  buildOverrideGrid(semesters);
 
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -832,6 +962,13 @@ function closeModal(e) {
 }
 
 load();
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
