@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>UG Life Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #e8e2d9;
+    --muted: #5a5550;
+    --accent: #c8b89a;
+
+    --c1: #e53e3e;
+    --c2: #dd6b20;
+    --c3: #d69e2e;
+    --c4: #68d391;
+    --c5: #38a169;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* subtle grain */
+  body::before {
+    content:'';
+    position:fixed;inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none;z-index:9999;opacity:0.4;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 2.5rem 2rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .logo {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.4rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .logo em { color: var(--accent); font-style: italic; }
+
+  .tagline {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* SETUP SECTION */
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .setup-card label {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .setup-card small {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 0.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .setup-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  input[type="date"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    cursor: pointer;
+    flex: 1;
+    min-width: 180px;
+  }
+  input[type="date"]:focus { border-color: var(--accent); }
+
+  button {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 0.55rem 1.25rem;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+  button.ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  button.ghost:hover { color: var(--text); border-color: var(--muted); }
+
+  /* STATS BAR */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .stat {
+    padding: 1.25rem 1rem;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .stat:last-child { border-right: none; }
+  .stat-val {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .stat-label {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* CALENDAR GRID */
+  .semester-section { margin-bottom: 2.5rem; }
+
+  .semester-title {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .weeks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 4px;
+  }
+
+  .week-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+    transition: border-color 0.15s, transform 0.1s;
+    color: var(--muted);
+    user-select: none;
+  }
+  .week-cell:hover:not(.future):not(.holiday) {
+    border-color: var(--accent);
+    transform: scale(1.05);
+    z-index: 2;
+    color: var(--text);
+  }
+  .week-cell.current {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .week-cell.current::after {
+    content: '';
+    position: absolute;
+    bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .week-cell.future {
+    opacity: 0.25;
+    cursor: default;
+  }
+  .week-cell.holiday {
+    background: repeating-linear-gradient(
+      45deg, var(--surface), var(--surface) 4px,
+      var(--surface2) 4px, var(--surface2) 8px
+    );
+  }
+
+  /* scored cell gets background color based on avg score */
+  .week-cell.scored { border-color: transparent; color: #000; font-weight: 500; }
+
+  /* score colors */
+  .score-1 { background: #7f1d1d !important; color: #fca5a5 !important; border-color: transparent !important; }
+  .score-2 { background: #7c2d12 !important; color: #fdba74 !important; border-color: transparent !important; }
+  .score-3 { background: #713f12 !important; color: #fde68a !important; border-color: transparent !important; }
+  .score-4 { background: #14532d !important; color: #86efac !important; border-color: transparent !important; }
+  .score-5 { background: #166534 !important; color: #4ade80 !important; border-color: transparent !important; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 480px;
+    padding: 2rem;
+    transform: translateY(16px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.4rem;
+    margin-bottom: 0.25rem;
+  }
+  .modal-sub {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Category scoring */
+  .categories { display: flex; flex-direction: column; gap: 1.25rem; margin-bottom: 1.75rem; }
+
+  .category-row { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .cat-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .cat-label .cat-icon { font-size: 14px; }
+
+  .score-btns {
+    display: flex;
+    gap: 6px;
+  }
+
+  .score-btn {
+    flex: 1;
+    aspect-ratio: 1;
+    max-width: 52px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted);
+    transition: all 0.12s;
+    padding: 0;
+  }
+
+  .score-btn:hover { opacity: 0.9; transform: scale(1.05); }
+
+  /* active score button colors */
+  .score-btn.active-1 { background: #7f1d1d; color: #fca5a5; border-color: transparent; }
+  .score-btn.active-2 { background: #7c2d12; color: #fdba74; border-color: transparent; }
+  .score-btn.active-3 { background: #713f12; color: #fde68a; border-color: transparent; }
+  .score-btn.active-4 { background: #14532d; color: #86efac; border-color: transparent; }
+  .score-btn.active-5 { background: #166534; color: #4ade80; border-color: transparent; }
+
+  /* hover colors */
+  .score-btn[data-score="1"]:hover { background: #7f1d1d; color: #fca5a5; border-color: transparent; }
+  .score-btn[data-score="2"]:hover { background: #7c2d12; color: #fdba74; border-color: transparent; }
+  .score-btn[data-score="3"]:hover { background: #713f12; color: #fde68a; border-color: transparent; }
+  .score-btn[data-score="4"]:hover { background: #14532d; color: #86efac; border-color: transparent; }
+  .score-btn[data-score="5"]:hover { background: #166534; color: #4ade80; border-color: transparent; }
+
+  /* Average display */
+  .avg-display {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .avg-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .avg-value {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.5rem;
+    line-height: 1.1;
+    transition: color 0.3s;
+  }
+  .avg-value.c1 { color: #fca5a5; }
+  .avg-value.c2 { color: #fdba74; }
+  .avg-value.c3 { color: #fde68a; }
+  .avg-value.c4 { color: #86efac; }
+  .avg-value.c5 { color: #4ade80; }
+
+  .modal-actions { display: flex; gap: 0.75rem; }
+  .modal-actions button { flex: 1; }
+
+  /* QUOTE */
+  .quote {
+    margin-top: 3rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .quote cite { display: block; margin-top: 0.5rem; font-style: normal; font-size: 11px; }
+
+  /* SEMESTER OVERRIDE */
+  .override-toggle {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    letter-spacing: 0.05em;
+    text-decoration: underline;
+    text-transform: none;
+    margin-bottom: 1rem;
+    display: inline-block;
+  }
+  .override-toggle:hover { color: var(--text); background: transparent; opacity: 1; }
+
+  .override-panel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+  .override-panel.open { display: block; }
+  .override-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .override-grid label { color: var(--muted); font-size: 11px; display: block; margin-bottom: 3px; }
+  .override-grid input[type="date"] { width: 100%; }
+
+  @media(max-width: 600px) {
+    .stats { grid-template-columns: repeat(2,1fr); }
+    .stat:nth-child(2) { border-right: none; }
+    .stat:nth-child(3) { border-right: 1px solid var(--border); border-top: 1px solid var(--border); }
+    .stat:nth-child(4) { border-top: 1px solid var(--border); }
+    .logo { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">UG Life <em>Tracker</em></div>
+  <p class="tagline">
+    Enter the first day of your UG.<br/>
+    Score each past week honestly — across four dimensions of your life.<br/>
+    No one is watching. The record is yours alone.
+  </p>
+</header>
+
+<main>
+
+  <!-- SETUP -->
+  <div class="setup-card">
+    <label>First day of your UG</label>
+    <small>All 4 years and 8 semesters are calculated from this one date.</small>
+    <div class="setup-row">
+      <input type="date" id="startDate"/>
+      <button onclick="buildCalendar()">Build my calendar →</button>
+    </div>
+  </div>
+
+  <!-- OVERRIDE TOGGLE -->
+  <button class="override-toggle" onclick="toggleOverride()">⚙ Adjust individual semester dates</button>
+  <div class="override-panel" id="overridePanel">
+    <div class="override-grid" id="overrideGrid"></div>
+    <div style="display:flex;gap:0.75rem;">
+      <button onclick="applyOverrides()">Save & rebuild</button>
+      <button class="ghost" onclick="clearOverrides()">Clear all overrides</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats" id="statsBar">
+    <div class="stat"><div class="stat-val" id="s-elapsed">—</div><div class="stat-label">weeks elapsed</div></div>
+    <div class="stat"><div class="stat-val" id="s-scored">—</div><div class="stat-label">weeks scored</div></div>
+    <div class="stat"><div class="stat-val" id="s-avg">—</div><div class="stat-label">average score</div></div>
+    <div class="stat"><div class="stat-val" id="s-remaining">—</div><div class="stat-label">weeks remaining</div></div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--surface2);border:1px solid var(--border)"></div> Semester week (unscored)
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:repeating-linear-gradient(45deg,#1e1e1e,#1e1e1e 4px,#161616 4px,#161616 8px)"></div> Holiday week
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#166534"></div> Score 5
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#14532d"></div> Score 4
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#713f12"></div> Score 3
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#7c2d12"></div> Score 2
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#7f1d1d"></div> Score 1
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="calendar">
+    <p style="color:var(--muted);font-size:12px;">Enter your start date above and click <strong style="color:var(--text)">"Build my calendar"</strong></p>
+  </div>
+
+  <div class="quote">
+    "The question is not whether you'll be distracted and lazy sometimes.<br/>
+    The question is whether you'll notice, and what you'll do next."
+    <cite>— adapted from Oliver Burkeman</cite>
+  </div>
+
+</main>
+
+<!-- SCORING MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Week —</div>
+    <div class="modal-sub" id="modalSub">Score this week across all four dimensions</div>
+
+    <div class="categories" id="categoriesContainer"></div>
+
+    <div class="avg-display">
+      <div class="avg-label">Average Score</div>
+      <div class="avg-value" id="avgDisplay">—</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="ghost" onclick="clearWeekScore()">Clear score</button>
+      <button class="ghost" onclick="closeModal()">Cancel</button>
+      <button onclick="saveScore()">Save →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = [
+  { key: 'academics',   label: 'Academics',         icon: '📚' },
+  { key: 'sports',      label: 'Sports / Gym',       icon: '🏋️' },
+  { key: 'mentalHealth',label: 'Mental Health',      icon: '🧠' },
+  { key: 'coding',      label: 'Coding / Activities',icon: '💻' },
+];
+
+const SCORE_LABELS = ['','poor','low','okay','good','great'];
+
+// State
+let weeks = [];
+let scores = {}; // { weekId: { academics, sports, mentalHealth, coding, avg } }
+let semesters = [];
+let overrides = {};
+let currentWeekId = null;
+
+// Load from localStorage
+function load() {
+  try {
+    const d = localStorage.getItem('uglife_v2');
+    if (d) {
+      const p = JSON.parse(d);
+      scores = p.scores || {};
+      overrides = p.overrides || {};
+      const sd = p.startDate;
+      if (sd) {
+        document.getElementById('startDate').value = sd;
+        buildCalendar(true);
+      }
+    }
+  } catch(e) {}
+}
+
+function save() {
+  localStorage.setItem('uglife_v2', JSON.stringify({
+    startDate: document.getElementById('startDate').value,
+    scores,
+    overrides
+  }));
+}
+
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function toISO(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function parseDate(s) {
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function buildSemesters(startDate) {
+  // 4 years, 8 semesters (odd = ~18 weeks, even/holiday ~8 weeks break)
+  const semDefs = [
+    { name:'Semester 1', weeks:18 },
+    { name:'Winter Break', weeks:6, holiday:true },
+    { name:'Semester 2', weeks:18 },
+    { name:'Summer Break', weeks:8, holiday:true },
+    { name:'Semester 3', weeks:18 },
+    { name:'Winter Break', weeks:6, holiday:true },
+    { name:'Semester 4', weeks:18 },
+    { name:'Summer Break', weeks:8, holiday:true },
+    { name:'Semester 5', weeks:18 },
+    { name:'Winter Break', weeks:6, holiday:true },
+    { name:'Semester 6', weeks:18 },
+    { name:'Summer Break', weeks:8, holiday:true },
+    { name:'Semester 7', weeks:18 },
+    { name:'Winter Break', weeks:6, holiday:true },
+    { name:'Semester 8', weeks:18 },
+  ];
+
+  let sems = [];
+  let cur = new Date(startDate);
+  semDefs.forEach((def, i) => {
+    const overrideKey = `sem_${i}`;
+    const start = overrides[overrideKey] ? parseDate(overrides[overrideKey]) : new Date(cur);
+    let w = [];
+    for (let j = 0; j < def.weeks; j++) {
+      w.push({ id: toISO(addDays(start, j * 7)), date: addDays(start, j * 7), holiday: !!def.holiday });
+    }
+    sems.push({ name: def.name, holiday: !!def.holiday, weeks: w });
+    cur = addDays(start, def.weeks * 7);
+  });
+  return sems;
+}
+
+function buildOverrideGrid(sems) {
+  const grid = document.getElementById('overrideGrid');
+  grid.innerHTML = '';
+  sems.forEach((s, i) => {
+    const label = document.createElement('label');
+    label.textContent = s.name;
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.dataset.idx = i;
+    input.value = overrides[`sem_${i}`] || '';
+    grid.appendChild(label);
+    grid.appendChild(input);
+  });
+}
+
+function applyOverrides() {
+  document.querySelectorAll('#overrideGrid input[type=date]').forEach(inp => {
+    const key = `sem_${inp.dataset.idx}`;
+    if (inp.value) overrides[key] = inp.value;
+    else delete overrides[key];
+  });
+  save();
+  buildCalendar(true);
+}
+
+function clearOverrides() {
+  overrides = {};
+  document.querySelectorAll('#overrideGrid input[type=date]').forEach(i => i.value = '');
+  save();
+  buildCalendar(true);
+}
+
+function toggleOverride() {
+  document.getElementById('overridePanel').classList.toggle('open');
+}
+
+function buildCalendar(silent) {
+  const sdVal = document.getElementById('startDate').value;
+  if (!sdVal) { alert('Please enter a start date.'); return; }
+  const startDate = parseDate(sdVal);
+  semesters = buildSemesters(startDate);
+  buildOverrideGrid(sems = semesters);
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const cal = document.getElementById('calendar');
+  cal.innerHTML = '';
+
+  let totalWeeks = 0, elapsed = 0, scoredCount = 0, remaining = 0;
+  let scoreSum = 0;
+
+  semesters.forEach(sem => {
+    const section = document.createElement('div');
+    section.className = 'semester-section';
+
+    const title = document.createElement('div');
+    title.className = 'semester-title';
+    title.textContent = sem.name;
+    section.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'weeks-grid';
+
+    sem.weeks.forEach(week => {
+      totalWeeks++;
+      const cell = document.createElement('div');
+      cell.className = 'week-cell';
+      if (sem.holiday) cell.classList.add('holiday');
+
+      const wDate = new Date(week.date);
+      const isCurrent = wDate <= today && addDays(wDate, 7) > today;
+      const isPast = addDays(wDate, 7) <= today;
+      const isFuture = wDate > today;
+
+      if (isCurrent) { cell.classList.add('current'); }
+      if (isFuture) { cell.classList.add('future'); }
+
+      if (isCurrent) remaining = 0; // will count after
+
+      if (isPast || isCurrent) elapsed++;
+      if (isFuture) remaining++;
+
+      const weekNum = elapsed;
+      cell.textContent = weekNum || '—';
+
+      // score
+      const sc = scores[week.id];
+      if (sc && sc.avg != null) {
+        scoredCount++;
+        scoreSum += sc.avg;
+        const rounded = Math.round(sc.avg);
+        cell.classList.add('scored', `score-${rounded}`);
+        cell.textContent = sc.avg.toFixed(1);
+        cell.title = `Avg ${sc.avg.toFixed(1)} | Academics:${sc.academics} Sports:${sc.sports} Mental:${sc.mentalHealth} Coding:${sc.coding}`;
+      }
+
+      if (!isFuture) {
+        cell.addEventListener('click', () => openModal(week.id, sem.name, weekNum, isCurrent));
+      }
+
+      grid.appendChild(cell);
+    });
+
+    section.appendChild(grid);
+    cal.appendChild(section);
+  });
+
+  // Stats
+  document.getElementById('s-elapsed').textContent = elapsed;
+  document.getElementById('s-scored').textContent = scoredCount;
+  document.getElementById('s-avg').textContent = scoredCount ? (scoreSum / scoredCount).toFixed(2) : '—';
+  document.getElementById('s-remaining').textContent = remaining;
+}
+
+// MODAL
+let tempScores = {};
+
+function openModal(weekId, semName, weekNum, isCurrent) {
+  currentWeekId = weekId;
+  document.getElementById('modalTitle').textContent = `Week ${weekNum}`;
+  document.getElementById('modalSub').textContent = `${semName} · ${weekId}`;
+
+  const existing = scores[weekId] || {};
+  tempScores = {
+    academics: existing.academics || null,
+    sports: existing.sports || null,
+    mentalHealth: existing.mentalHealth || null,
+    coding: existing.coding || null,
+  };
+
+  renderCategories();
+  updateAvg();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function renderCategories() {
+  const c = document.getElementById('categoriesContainer');
+  c.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'category-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label';
+    lbl.innerHTML = `<span class="cat-icon">${cat.icon}</span> ${cat.label}`;
+    row.appendChild(lbl);
+
+    const btns = document.createElement('div');
+    btns.className = 'score-btns';
+
+    for (let s = 1; s <= 5; s++) {
+      const btn = document.createElement('button');
+      btn.className = 'score-btn';
+      btn.dataset.score = s;
+      btn.textContent = s;
+      btn.title = SCORE_LABELS[s];
+      if (tempScores[cat.key] === s) btn.classList.add(`active-${s}`);
+      btn.addEventListener('click', () => {
+        tempScores[cat.key] = s;
+        // update buttons for this category
+        btns.querySelectorAll('.score-btn').forEach((b,i) => {
+          b.className = 'score-btn';
+          b.dataset.score = i+1;
+          if (i+1 === s) b.classList.add(`active-${s}`);
+        });
+        updateAvg();
+      });
+      btns.appendChild(btn);
+    }
+
+    row.appendChild(btns);
+    c.appendChild(row);
+  });
+}
+
+function updateAvg() {
+  const vals = CATEGORIES.map(c => tempScores[c.key]).filter(v => v != null);
+  const avgEl = document.getElementById('avgDisplay');
+  if (!vals.length) {
+    avgEl.textContent = '—';
+    avgEl.className = 'avg-value';
+    return;
+  }
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  avgEl.textContent = avg.toFixed(2);
+  const cls = avg <= 1.5 ? 'c1' : avg <= 2.5 ? 'c2' : avg <= 3.5 ? 'c3' : avg <= 4.5 ? 'c4' : 'c5';
+  avgEl.className = `avg-value ${cls}`;
+}
+
+function saveScore() {
+  const vals = CATEGORIES.map(c => tempScores[c.key]);
+  const filled = vals.filter(v => v != null);
+  if (!filled.length) { closeModal(); return; }
+  const avg = filled.reduce((a,b)=>a+b,0) / filled.length;
+  scores[currentWeekId] = {
+    academics: tempScores.academics,
+    sports: tempScores.sports,
+    mentalHealth: tempScores.mentalHealth,
+    coding: tempScores.coding,
+    avg: parseFloat(avg.toFixed(2))
+  };
+  save();
+  document.getElementById('modalOverlay').classList.remove('open');
+  buildCalendar(true);
+}
+
+function clearWeekScore() {
+  delete scores[currentWeekId];
+  save();
+  document.getElementById('modalOverlay').classList.remove('open');
+  buildCalendar(true);
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+load();
+</script>
+</body>
+</html>
